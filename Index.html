@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دليل Git التفاعلي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #faf9f6;
+            color: #333333;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 380px;
+            }
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d4d4d8; 
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a1a1aa; 
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 antialiased overflow-x-hidden selection:bg-orange-200 selection:text-orange-900">
+
+<!-- Chosen Palette: Warm Neutrals & Terracotta (bg-stone-50/faf9f6, slate-800, orange-600/terracotta accents) -->
+<!-- Application Structure Plan: The application is designed as an interactive dashboard prioritizing exploration and quick retrieval. It features a unified search bar for instant access, an interactive 'radar' chart providing a visual overview of Git's functional domains (clicking domains filters the list), and a dynamic card grid displaying the commands. This non-linear structure allows users to learn conceptually (via categories) or functionally (via direct search), transforming a static cheat sheet into an active tool. -->
+<!-- Visualization & Content Choices: Data: Git commands categorized by function -> Goal: Provide an overview of tool capabilities & facilitate filtering -> Viz Method: Polar Area Chart (Chart.js) -> Interaction: Clickable segments to filter command cards -> Justification: Shows relative weight of categories (e.g., branching is complex and has many commands) while acting as a visual navigation menu -> Library: Chart.js (Canvas). Support structure: Grid of copyable text cards. -->
+<!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+    
+    <header class="mb-10 text-center lg:text-right lg:flex lg:items-center lg:justify-between border-b border-stone-200 pb-8">
+        <div class="max-w-3xl">
+            <h1 class="text-4xl md:text-5xl font-extrabold text-slate-900 mb-4 tracking-tight">
+                دليل <span class="text-orange-600">Git</span> التفاعلي
+            </h1>
+            <p class="text-lg text-slate-600 leading-relaxed">
+                تطبيق تفاعلي مصمم لتسهيل استكشاف، فهم، وحفظ أوامر Git الأساسية. يوفر هذا الدليل وصولاً سريعاً لدورة العمل اليومية، إدارة الفروع، التعامل مع المستودعات السحابية، ومهارات التراجع عن الأخطاء بضغطة زر.
+            </p>
+        </div>
+        <div class="mt-6 lg:mt-0 bg-white shadow-sm rounded-2xl p-4 border border-stone-100 inline-block">
+            <div class="text-sm text-slate-500 mb-1">إجمالي الأوامر</div>
+            <div class="text-4xl font-bold text-orange-600" id="total-commands-counter">27</div>
+        </div>
+    </header>
+
+    <div class="mb-8">
+        <div class="relative max-w-2xl mx-auto lg:mx-0">
+            <span class="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-400 text-xl">
+                🔍
+            </span>
+            <input type="text" id="searchInput" placeholder="ابحث عن أمر أو وظيفة (مثال: commit, فرع, تراجع)..." 
+                   class="w-full pl-4 pr-12 py-4 rounded-xl border border-stone-300 shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-all text-lg bg-white">
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <aside class="lg:col-span-1 space-y-6">
+            <div class="glass-panel rounded-2xl p-6 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-800 mb-2 border-b border-stone-200 pb-2">نظرة عامة على الأقسام</h2>
+                <p class="text-sm text-slate-600 mb-6">
+                    يوضح هذا الرسم البياني توزيع أوامر Git حسب مجالات الاستخدام. انقر على أي قسم في الرسم البياني لتصفية الأوامر وعرض تفاصيل تلك الفئة فقط.
+                </p>
+                <div class="chart-container">
+                    <canvas id="gitChart"></canvas>
+                </div>
+            </div>
+
+            <div class="glass-panel rounded-2xl p-6 shadow-sm">
+                <h2 class="text-xl font-bold text-slate-800 mb-4 border-b border-stone-200 pb-2">تصفية سريعة</h2>
+                <div id="category-buttons" class="flex flex-wrap gap-2">
+                </div>
+            </div>
+        </aside>
+
+        <main class="lg:col-span-2">
+            <div class="mb-4 flex justify-between items-end">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-800" id="current-category-title">جميع الأوامر</h2>
+                    <p class="text-sm text-slate-500 mt-1" id="current-category-desc">عرض كافة أوامر Git المتاحة في الدليل.</p>
+                </div>
+                <button id="resetBtn" class="hidden text-sm text-orange-600 hover:text-orange-800 font-medium transition-colors px-3 py-1 bg-orange-50 rounded-lg">
+                    عرض الكل ↺
+                </button>
+            </div>
+
+            <div id="commands-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 custom-scrollbar overflow-y-auto pr-2" style="max-height: 75vh;">
+            </div>
+
+            <div id="no-results" class="hidden text-center py-16 glass-panel rounded-2xl">
+                <div class="text-5xl mb-4">🕵️‍♂️</div>
+                <h3 class="text-xl font-bold text-slate-800 mb-2">لا توجد نتائج</h3>
+                <p class="text-slate-500">لم نتمكن من العثور على أمر يطابق بحثك. جرب كلمات مفتاحية أخرى.</p>
+            </div>
+        </main>
+
+    </div>
+</div>
+
+<div id="toast" class="fixed bottom-5 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none z-50 flex items-center gap-2">
+    <span>✅</span> تم نسخ الأمر بنجاح!
+</div>
+
+<script>
+    const gitData = [
+        {
+            id: 'config',
+            title: 'إعدادات الهوية',
+            icon: '⚙️',
+            color: '#f97316',
+            desc: 'الأوامر الخاصة بتعريف هويتك للمشروع لتوثيق التعديلات باسمك.',
+            commands: [
+                { cmd: 'git config --global user.name "Your Name"', desc: 'ضبط الاسم المرتبط بتعديلاتك' },
+                { cmd: 'git config --global user.email "email@example.com"', desc: 'ضبط الإيميل المرتبط بتعديلاتك' },
+                { cmd: 'git config --list', desc: 'عرض الإعدادات الحالية المحفوظة' },
+                { cmd: 'git config --global --unset-all user.name', desc: 'تسجيل الخروج (مسح الهوية الحالية)' }
+            ]
+        },
+        {
+            id: 'start',
+            title: 'البدء بمستودع جديد',
+            icon: '🚀',
+            color: '#0ea5e9',
+            desc: 'أوامر لتهيئة مشروع محلي أو جلب مشروع من خادم.',
+            commands: [
+                { cmd: 'git init', desc: 'تحويل مجلد محلي إلى مستودع Git' },
+                { cmd: 'git clone <url>', desc: 'نسخ مستودع موجود (من GitHub أو GitLab مثلاً)' }
+            ]
+        },
+        {
+            id: 'daily',
+            title: 'العمل اليومي',
+            icon: '🔄',
+            color: '#10b981',
+            desc: 'دورة العمل الأساسية لرفع وتوثيق التعديلات باستمرار.',
+            commands: [
+                { cmd: 'git status', desc: 'معرفة حالة الملفات (ما تم تعديله وما هو جاهز للحفظ)' },
+                { cmd: 'git add <file_name>', desc: 'إضافة ملف محدد للمرحلة التحضيرية (Staging)' },
+                { cmd: 'git add .', desc: 'إضافة كل الملفات المعدلة للمرحلة التحضيرية' },
+                { cmd: 'git commit -m "رسالة التعديل"', desc: 'حفظ التغييرات مع رسالة توضيحية (Commit)' },
+                { cmd: 'git commit --amend', desc: 'تعديل آخر commit (إذا نسيت ملفاً أو أردت تعديل الرسالة)' }
+            ]
+        },
+        {
+            id: 'branching',
+            title: 'الفروع والدمج',
+            icon: '🔀',
+            color: '#8b5cf6',
+            desc: 'أوامر لعزل التعديلات وتطوير الميزات دون المساس بالأساس.',
+            commands: [
+                { cmd: 'git branch', desc: 'عرض جميع الفروع المتاحة في المستودع' },
+                { cmd: 'git branch <branch_name>', desc: 'إنشاء فرع جديد' },
+                { cmd: 'git checkout <branch_name>', desc: 'الانتقال لفرع آخر' },
+                { cmd: 'git checkout -b <branch_name>', desc: 'إنشاء فرع جديد والانتقال إليه مباشرة' },
+                { cmd: 'git merge <branch_name>', desc: 'دمج فرع آخر في الفرع الذي تقف عليه حالياً' },
+                { cmd: 'git branch -d <branch_name>', desc: 'حذف فرع (بعد الانتهاء منه ودمجه)' }
+            ]
+        },
+        {
+            id: 'history',
+            title: 'تاريخ العمل',
+            icon: '📜',
+            color: '#eab308',
+            desc: 'مراجعة ما تم إنجازه، معرفة الفروقات، ومتابعة سجل المشروع.',
+            commands: [
+                { cmd: 'git log', desc: 'عرض سجل التعديلات (Commits) بالتفصيل' },
+                { cmd: 'git log --oneline', desc: 'عرض السجل بشكل مختصر (سطر واحد لكل تعديل)' },
+                { cmd: 'git diff', desc: 'رؤية الفرق بين الملفات المعدلة وما تم حفظه في آخر commit' }
+            ]
+        },
+        {
+            id: 'remote',
+            title: 'التعامل مع الإنترنت',
+            icon: '🌐',
+            color: '#ec4899',
+            desc: 'مزامنة التعديلات المحلية مع السيرفرات الخارجية.',
+            commands: [
+                { cmd: 'git remote add origin <url>', desc: 'ربط المستودع المحلي بسيرفر خارجي' },
+                { cmd: 'git push origin <branch_name>', desc: 'رفع الملفات المعتمدة إلى السيرفر' },
+                { cmd: 'git pull', desc: 'جلب التعديلات الجديدة من السيرفر وتحديث النسخة المحلية' }
+            ]
+        },
+        {
+            id: 'undo',
+            title: 'التراجع عن الأخطاء',
+            icon: '↩️',
+            color: '#ef4444',
+            desc: 'طرق آمنة ومتقدمة للتراجع عن الأوامر والتعديلات الخاطئة.',
+            commands: [
+                { cmd: 'git reset <file_name>', desc: 'إلغاء إضافة ملف من المرحلة التحضيرية' },
+                { cmd: 'git reset --hard <commit_id>', desc: 'العودة لتعديل قديم وحذف كل التعديلات التي بعده' },
+                { cmd: 'git stash', desc: 'إخفاء التعديلات الحالية مؤقتاً لتنظيف مساحة العمل' },
+                { cmd: 'git stash pop', desc: 'استرجاع التعديلات المخفية سابقاً' }
+            ]
+        }
+    ];
+
+    const state = {
+        activeCategory: null,
+        searchQuery: ''
+    };
+
+    const DOM = {
+        commandsContainer: document.getElementById('commands-container'),
+        categoryButtons: document.getElementById('category-buttons'),
+        searchInput: document.getElementById('searchInput'),
+        currentTitle: document.getElementById('current-category-title'),
+        currentDesc: document.getElementById('current-category-desc'),
+        noResults: document.getElementById('no-results'),
+        resetBtn: document.getElementById('resetBtn'),
+        toast: document.getElementById('toast'),
+        totalCounter: document.getElementById('total-commands-counter')
+    };
+
+    let gitChartInstance = null;
+
+    function init() {
+        renderCategoryButtons();
+        initChart();
+        updateDisplay();
+        setupEventListeners();
+    }
+
+    function setupEventListeners() {
+        DOM.searchInput.addEventListener('input', (e) => {
+            state.searchQuery = e.target.value.toLowerCase();
+            updateDisplay();
+        });
+
+        DOM.resetBtn.addEventListener('click', () => {
+            state.activeCategory = null;
+            state.searchQuery = '';
+            DOM.searchInput.value = '';
+            updateDisplay();
+        });
+    }
+
+    function renderCategoryButtons() {
+        DOM.categoryButtons.innerHTML = gitData.map(cat => `
+            <button onclick="setCategory('${cat.id}')" 
+                    id="btn-${cat.id}"
+                    class="px-4 py-2 rounded-full text-sm font-medium border transition-all duration-200 
+                           hover:shadow-md flex items-center gap-2 bg-white text-slate-700 border-stone-200">
+                <span>${cat.icon}</span> ${cat.title}
+            </button>
+        `).join('');
+    }
+
+    window.setCategory = (categoryId) => {
+        state.activeCategory = categoryId;
+        state.searchQuery = ''; 
+        DOM.searchInput.value = '';
+        updateDisplay();
+    };
+
+    function updateDisplay() {
+        
+        gitData.forEach(cat => {
+            const btn = document.getElementById(`btn-${cat.id}`);
+            if(btn) {
+                if(state.activeCategory === cat.id) {
+                    btn.classList.add('bg-orange-50', 'border-orange-200', 'text-orange-700');
+                    btn.classList.remove('bg-white', 'text-slate-700', 'border-stone-200');
+                } else {
+                    btn.classList.remove('bg-orange-50', 'border-orange-200', 'text-orange-700');
+                    btn.classList.add('bg-white', 'text-slate-700', 'border-stone-200');
+                }
+            }
+        });
+
+        
+        let filteredCommands = [];
+        let currentCatData = null;
+
+        if (state.activeCategory) {
+            currentCatData = gitData.find(c => c.id === state.activeCategory);
+            filteredCommands = currentCatData.commands.map(cmd => ({...cmd, catTitle: currentCatData.title, catIcon: currentCatData.icon, catColor: currentCatData.color}));
+            DOM.currentTitle.textContent = `${currentCatData.icon} ${currentCatData.title}`;
+            DOM.currentDesc.textContent = currentCatData.desc;
+            DOM.resetBtn.classList.remove('hidden');
+        } else {
+            gitData.forEach(cat => {
+                cat.commands.forEach(cmd => {
+                    filteredCommands.push({...cmd, catTitle: cat.title, catIcon: cat.icon, catColor: cat.color});
+                });
+            });
+            DOM.currentTitle.textContent = 'جميع الأوامر';
+            DOM.currentDesc.textContent = 'عرض كافة أوامر Git المتاحة في الدليل. استخدم البحث للوصول السريع.';
+            
+            if(state.searchQuery) {
+                 DOM.resetBtn.classList.remove('hidden');
+            } else {
+                 DOM.resetBtn.classList.add('hidden');
+            }
+        }
+
+        if (state.searchQuery) {
+            filteredCommands = filteredCommands.filter(cmd => 
+                cmd.cmd.toLowerCase().includes(state.searchQuery) || 
+                cmd.desc.toLowerCase().includes(state.searchQuery)
+            );
+            DOM.currentTitle.textContent = `نتائج البحث عن: "${state.searchQuery}"`;
+            DOM.currentDesc.textContent = `تم العثور على ${filteredCommands.length} نتيجة.`;
+        }
+
+        renderCommands(filteredCommands);
+        updateChartHighlight();
+    }
+
+    function renderCommands(commands) {
+        if (commands.length === 0) {
+            DOM.commandsContainer.innerHTML = '';
+            DOM.noResults.classList.remove('hidden');
+            return;
+        }
+
+        DOM.noResults.classList.add('hidden');
+        
+        DOM.commandsContainer.innerHTML = commands.map((cmd, index) => `
+            <div class="bg-white rounded-xl p-5 border border-stone-200 shadow-sm hover:shadow-md transition-shadow duration-300 flex flex-col justify-between" style="animation: fadeIn 0.3s ease-out ${index * 0.05}s both;">
+                <div>
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-xs font-bold px-2 py-1 rounded-md text-white" style="background-color: ${cmd.catColor} !important;">
+                            ${cmd.catIcon} ${cmd.catTitle}
+                        </span>
+                    </div>
+                    <p class="text-slate-600 mb-4 font-medium leading-relaxed">${cmd.desc}</p>
+                </div>
+                
+                <div class="relative mt-auto">
+                    <div class="bg-slate-800 rounded-lg p-3 pr-10 font-mono text-sm text-green-400 overflow-x-auto text-left dir-ltr" dir="ltr">
+                        ${cmd.cmd.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                    </div>
+                    <button onclick="copyToClipboard(this, \`${cmd.cmd.replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\`)" 
+                            class="absolute top-2 right-2 p-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-md transition-colors"
+                            title="نسخ الأمر">
+                        📋
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    window.copyToClipboard = (btnElement, text) => {
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = btnElement.innerHTML;
+            btnElement.innerHTML = '✔️';
+            btnElement.classList.replace('text-slate-300', 'text-green-400');
+            
+            showToast();
+
+            setTimeout(() => {
+                btnElement.innerHTML = originalText;
+                btnElement.classList.replace('text-green-400', 'text-slate-300');
+            }, 2000);
+        });
+    };
+
+    function showToast() {
+        DOM.toast.classList.remove('opacity-0');
+        setTimeout(() => {
+            DOM.toast.classList.add('opacity-0');
+        }, 3000);
+    }
+
+    function initChart() {
+        const ctx = document.getElementById('gitChart').getContext('2d');
+        const labels = gitData.map(d => d.title);
+        const data = gitData.map(d => d.commands.length);
+        const bgColors = gitData.map(d => d.color + '80'); 
+        const borderColors = gitData.map(d => d.color);
+
+        Chart.defaults.font.family = "'Tajawal', sans-serif";
+        
+        gitChartInstance = new Chart(ctx, {
+            type: 'polarArea',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: bgColors,
+                    borderColor: borderColors,
+                    borderWidth: 2,
+                    hoverOffset: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        ticks: { display: false },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        rtl: true,
+                        labels: {
+                            font: { size: 13, family: "'Tajawal', sans-serif" },
+                            padding: 15,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        titleFont: { family: "'Tajawal', sans-serif", size: 14 },
+                        bodyFont: { family: "'Tajawal', sans-serif", size: 13 },
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += context.parsed + ' أوامر';
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const categoryId = gitData[index].id;
+                        if (state.activeCategory === categoryId) {
+                            setCategory(null); 
+                        } else {
+                            setCategory(categoryId);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateChartHighlight() {
+        if(!gitChartInstance) return;
+        
+        const dataset = gitChartInstance.data.datasets[0];
+        
+        if (state.activeCategory) {
+            const activeIndex = gitData.findIndex(c => c.id === state.activeCategory);
+            dataset.backgroundColor = gitData.map((d, i) => i === activeIndex ? d.color + 'E6' : d.color + '20');
+            dataset.borderColor = gitData.map((d, i) => i === activeIndex ? d.color : d.color + '40');
+        } else {
+            dataset.backgroundColor = gitData.map(d => d.color + '80');
+            dataset.borderColor = gitData.map(d => d.color);
+        }
+        
+        gitChartInstance.update();
+    }
+
+    document.head.insertAdjacentHTML('beforeend', `
+        <style>
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(10px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+            .dir-ltr { direction: ltr; }
+        </style>
+    `);
+
+    document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
