@@ -1,18 +1,5 @@
 # ⚡ Interactive Git Guide | دليل Git التفاعلي ⚡
 
-<div align="center">
-  <img src="https://vercel.app" width="100%" />
-</div>
-
-<p align="center">
-  <img src="https://shields.io" />
-  <img src="https://shields.io" />
-  <img src="https://shields.io" />
-  <img src="https://shields.io" />
-</p>
-
----
-
 ## 🛠️ عن المشروع (About)
 هذا المشروع هو **واجهة تفاعلية ذكية** مصممة لتبسيط مفاهيم Git المعقدة. بدلاً من البحث في القوائم الطويلة، يوفر التطبيق تجربة بصرية تعتمد على البيانات لتوجيه المطورين نحو الأوامر الصحيحة بناءً على "دورة حياة المشروع".
 
@@ -46,15 +33,6 @@ cd git-interactive-guide
 open index.html
 ```
 
-## 🤝 تواصل معي (Connect)
-<div align="right">
-  <a href="https://linkedin.com">
-    <img src="https://shields.io" />
-  </a>
-  <a href="mailto:amine23444@gmail.com">
-    <img src="https://shields.io" />
-  </a>
-</div>
 
 ---
 <p align="center">Created with 🧡 by <b>Abdelhamid Med Amine</b></p>
