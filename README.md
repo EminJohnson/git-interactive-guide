@@ -28,7 +28,7 @@
 لا حاجة لعمليات تثبيت معقدة! فقط قم بتحميل المستودع وافتح ملف `index.html` في متصفحك:
 
 ```bash
-git clone https://github.com
+git clone https://github.com/EminJohnson/git-interactive-guide.git
 cd git-interactive-guide
 open index.html
 ```
